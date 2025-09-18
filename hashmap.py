@@ -51,7 +51,7 @@ class CustomHashMap:
         return arr
         
     def print(self):
-        print('---PHONEBOOK----')
+        print('---BOOK---')
         for item in self.map:
             if item is not None:
                 print(str(item))

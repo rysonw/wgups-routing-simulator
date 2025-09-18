@@ -1,9 +1,8 @@
-import datetime
-
 class Address:
-    def __init__(self, city, zip, deadline_time):
+    def __init__(self, address, city, state, zip_code):
+        self.address = address
         self.city = city
-        self.zip_code = zip
-        self.deadline_time = deadline_time
+        self.state = state
+        self.zip_code = zip_code
 
     

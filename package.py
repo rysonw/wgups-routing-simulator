@@ -1,20 +1,17 @@
 from address import Address
+from Enums.package_status import PackageStatus
 
 class Package:
-    def __init__(self):
-        self.id = None
-        self.address = None
-        self.truck_number = None
+    def __init__(self, id, address, deadline, weight, truck_number=None):
+        self.id = id
+        self.deadline = deadline
+        self.weight = weight
+        self.address = address
+        self.truck_number = truck_number
+        self.package_status = PackageStatus.AT_HUB
 
-    def set_packages(self, packages):
-        if len(packages) > 16:
-            return
-        self.packages = packages
-
-    def get_packages(self):
-        return self.packages
-    
-    def add_package(self, package):
-        if len(self.packages) + 1 > 16:
-            return
-        self.packages.append(package)
+    def set_package_status(self, status):
+        if type(status) != type(PackageStatus):
+            print("Please provide proper PackageStatus enum object")
+        else:
+            self.package_status = status
