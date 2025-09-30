@@ -1,55 +1,41 @@
-"""Truck model
+"""Truck Model for WGUPS Simulator
 
 Process:
-  - Represent a delivery truck with a list of packages, driver, current
-    address, and mileage tracking.
+  - Represent a delivery truck with a list of packages, current
+    address, and total mileage.
 
 Flow:
-  - The simulator will create Truck instances, assign drivers, load
-    packages, advance current_time during travel, and deliver packages.
+  - The simulator will create Truck instances, load a list of static 
+  packages, advance current_time during travel, and deliver packages.
 
 Complexity:
   - Most operations are O(1). Package list operations depend on list size.
 """
-
 
 class Truck:
     """Simple truck container used by the simulator.
 
     Fields:
       - packages: list of Package objects currently loaded
-      - driver: Driver assigned to the truck, or None
-      - current_address: string for the current address
-      - miles_traveled_today: total miles tracked for the day
-      - is_in_use: flag indicating whether truck is active
-      - departure_time: scheduled departure time
+      - current_address: string for the current street address only
+      - miles_traveled_today: total miles tracked for the day for this specific truck
+      - is_in_use: flag indicating whether truck is active, 2 trucks active at the most
+      - departure_time: scheduled departure time, timedate object
     """
     def __init__(self, departure_time, address):
-        # packages stored in a Python list; capacity limited to 16
         self.packages = []
         self.current_address = address
         self.miles_traveled_today = 0
         self.is_in_use = False
         self.departure_time = departure_time
 
-    def set_packages(self, packages):
-        """Replace truck's package list if within capacity.
-
-        Process: validate capacity then replace list reference (O(1)).
-        """
-        if len(packages) > 16:
-            return
-        self.packages = packages
-
     def get_packages(self):
-        """Return current package list (O(1))."""
+        """Return current package list, Complexity: O(1)."""
         return self.packages
     
     def add_package(self, package):
-        """Append packages to the truck if capacity allows.
-
-        Note: method expects `packages` to be a package or list element already
-        prepared by parse/load logic. Guard against exceeding capacity.
+        """
+        Append a single package to the truck if capacity allows.
         Complexity: O(1) for append, O(n) if list resizing occurs internally.
         """
         if len(self.packages) + 1 > 16:

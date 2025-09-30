@@ -1,4 +1,5 @@
-"""Address model
+"""
+Address Model
 
 Process:
     - Provide a small, plain data holder for an address used by Package objects.
@@ -16,7 +17,7 @@ class Address:
         """Simple address container.
 
         Process: store address components as attributes for easy access.
-        Flow: callers create Address(...) once per package when parsing CSV rows.
+        Flow: callers create Address' once per package when parsing CSV package data.
         """
         def __init__(self, street, city, state, zip_code):
                 # store raw address fields on the object

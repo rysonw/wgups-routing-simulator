@@ -1,4 +1,5 @@
-"""WGUPS routing program - main entrypoint and helpers.
+"""
+WGUPS Routing Main Program - 010369357
 
 Process:
   - Provide CSV parsing helpers, simple simulation control and CLI menu for a
@@ -9,8 +10,8 @@ Flow:
     project's CustomHashMap keyed by package id.
   - parse_distance_csv() builds an address list, index map and symmetric
     distance matrix used by routing helpers.
-  - simulate_single_operation_day() is the (currently simplified) interactive
-    loop used to drive different views and simulations.
+  - simulate_truck_deliveries() is the interactive
+    loop used to simulate truck delivery operation.
 """
 
 from address import Address
@@ -26,29 +27,31 @@ import time
 
 # CONST VARS
 TRUCK_SPEED = 18.0
-DEFAULT_PACKAGE_CSV_ADDRESS = "C:/Users/ryson/Desktop/Anything CS/WGU/C950 - DSA 2/C950---DSA-2/Input Files/WGUPS Package File.csv"
-DEFAULT_DISTANCE_CSV_ADDRESS = "C:/Users/ryson/Desktop/Anything CS/WGU/C950 - DSA 2/C950---DSA-2/Input Files/WGUPS Distance File.csv"
+DEFAULT_PACKAGE_CSV_ADDRESS = "./Input Files/WGUPS Package File.csv"
+DEFAULT_DISTANCE_CSV_ADDRESS = "./Input Files/WGUPS Distance File.csv"
 
 def _print_package_info(package):
-    """Prints the package info, used in both singular and all pacakge options
+    """
+    Prints the package info, used in both singular and all pacakge options
 
     Process: Extract all key values from package object
     Build f-string to print key information for user
 
     Complexity: All operations are instant -> O(1)
     """
-
-    address = f"{package.address.street}, {package.address.city} {package.address.zip_code}"
+    # Build address string
     dt = getattr(package, "delivery_time", None)
-    # format delivery time as time only (HH:MM:SS); show None or string otherwise
     if hasattr(dt, "strftime"):
         delivery = dt.strftime("%H:%M:%S")
     else:
-        delivery = str(dt)
+        delivery = "N/A"
 
+    # Custom print formatting for a normalized output
     print(
         f"ID: {package.id:<2} "
-        f"| Address: {address:<70} "
+        f"| Address: {package.address.street:<40} "
+        f"| City: {package.address.city:<16} "
+        f"| Zip Code: {package.address.zip_code:<2} "
         f"| Weight: {package.weight:<2} Kg "
         f"| Deadline: {package.deadline:<10} "
         f"| Truck: {package.assigned_truck_number:<2} "
@@ -56,18 +59,18 @@ def _print_package_info(package):
         f"| Delivery Time: {delivery}"
     )
 
-
 def main_menu():
-    """Top-level interactive loop.
+    """
+    Top-level interactive loop.
 
-    Process: Show the main menu and dispatch a small set of demo actions.
+    Process: Show the main menu.
     Flow: The loop reads a menu option and prints the corresponding action
     placeholder. Continued until exit option is selected
 
     Complexity: Every interaction is O(1).
     """
 
-    # Start input loop (simple CLI)
+    # Start input loop
     while True:
         user_input = show_main_menu()
 
@@ -76,7 +79,7 @@ def main_menu():
             time.sleep(1)
             print("\n[Viewing All Packages...]\n")
 
-            # Choose what time to simulate delivery process to
+            # Choose what time to simulate delivery process till
             target_time = input("Enter a military time in the format HH:mm (or 'EOD' for end-of-day):\n").strip()
             print()
             if target_time.upper() == "EOD":
@@ -124,10 +127,12 @@ def main_menu():
                     input("Press Enter to return to the main menu...")
                     continue
 
-            # Run the simulation up to the requested snapshot and get updated master list
+            # Run the simulation up to the requested snapshot and get master list
+            # The Master List is a logbook of the statues of all package information
             master_package_list = simulate_truck_deliveries(snapshot_dt)
 
             # Validate input is a valid package number
+            # Find specific package info and print to console
             if 1 <= package_id <= 40:
                 package = master_package_list.get(package_id)
                 if package:
@@ -138,6 +143,7 @@ def main_menu():
 
             print("Invalid package id entered, please enter a valid id (1-40).")
 
+        # Quit option
         elif user_input == "3":
             time.sleep(1)
             print("\nShutting down WGUPS Routing Console...\n")
@@ -149,7 +155,16 @@ def main_menu():
             time.sleep(1)
 
 def _calculate_return_to_hub(curr_truck, address_index, distances, ROUTE_TIME, TRUCK_SPEED):
-    """Calculate mileage for truck returning to hub"""
+    """
+    Helper function to calculate distance when returning back
+    to HUB after all packaes are delivered.
+
+    Process: Calculate distance from current truck location to HUB, then add
+    Flow: Get current address through truck attr. Find corresponding distance through address_index
+
+    Complexity: O(1).
+    """
+
     curr_addr_idx = address_index[curr_truck.current_address]
     hub_idx = address_index["HUB"]
     return_dist = distances[curr_addr_idx][hub_idx]
@@ -159,18 +174,36 @@ def _calculate_return_to_hub(curr_truck, address_index, distances, ROUTE_TIME, T
     return ROUTE_TIME + timedelta(minutes=return_minutes)
 
 def _find_nearest_delivery(curr_location, packages, address_index, distances):
-    """Find the truly nearest delivery point from current location"""
+    """
+    Find the next closest package destination from the current location.
+
+    Process:
+      - Look up the current address index.
+      - Iterate through all undelivered packages, checking their address index.
+      - Compute the distance from the current location to each package’s address.
+      - Track the package with the smallest distance.
+
+    Flow:
+      - Returns a tuple (nearest_pkg, nearest_idx, nearest_dist).
+      - If no valid package is found, returns (None, None, inf).
+
+    Complexity: O(n), where n = number of packages on the truck.
+    """
+
+    # Initialize variables to return
     curr_idx = address_index[curr_location]
     nearest_dist = float('inf')
     nearest_pkg = None
     nearest_idx = None
     
+    # Iterate through package list
     for package in packages:
         pkg_idx = address_index.get(package.address.street)
         if pkg_idx is None:
             continue
             
         dist = distances[curr_idx][pkg_idx]
+        # Only update nearest pkg if the distance is the lower then what we have now
         if dist is not None and dist < nearest_dist:
             nearest_dist = dist
             nearest_pkg = package
@@ -180,13 +213,36 @@ def _find_nearest_delivery(curr_location, packages, address_index, distances):
 
 def simulate_truck_deliveries(end_time):
     """
-    Run the day simulation up to `end_time` (a datetime on the same day).
-    - Truck 1/2 leaves at 8:00, Truck 3 leaves at the earliest 10:20.
-    - Truck 3 start whenever Truck 1 returns back to Hub
-    - Uses nearest-neighbor per truck to pick next stop.
-    - Advances trucks in event order and updates package objects in-place:
-        pkg.load_time, pkg.delivery_time, pkg.package_status (or via set_package_status())
-    - Returns a dict of master packages keyed by id (updated package objects).
+    Simulates the delivery process for all WGUPS trucks up to a given time. Used for both "all
+    package" and "siongualr package" menu options
+
+    Process:
+      - Load package and distance data from given CSV Files.
+      - Apply special rules (delayed packages, corrected addresses).
+      - Initialize three trucks with specific departure times:
+          * Truck 1: 8:00 AM (time-sensitive packages).
+          * Truck 2: 9:05 AM (waits for delayed packages).
+          * Truck 3: 10:20 AM at the earliest, or once Truck 1 returns to hub.
+      - Assign packages to trucks
+      - For each truck, repeatedly select the nearest package destination using
+        `_find_nearest_delivery` and simulate travel/delivery until:
+          * All packages on the truck are delivered, or
+          * The simulation snapshot time (`end_time`) is reached.
+      - If a truck finishes all deliveries, calculate its return trip to the hub.
+      - Update each package’s status (`DELAYED`, `EN_ROUTE`, `DELIVERED`) and record
+        delivery times as appropriate.
+
+    Flow:
+      - Trucks are processed in sequence: Truck 1 → Truck 2 → Truck 3.
+      - Each delivery leg updates mileage, current address, and package metadata.
+      - Partial legs are supported if `end_time` occurs mid-delivery.
+      - Returns a dictionary of all packages (id → Package object) with updated state.
+      - Also prints per-truck statistics and total mileage traveled.
+
+    Complexity:
+      - Package lookups in the hash map: O(1) average.
+      - Route simulation per truck: O(n²) worst case (nearest-neighbor heuristic across n packages).
+      - Overall: O(n²), where n = number of packages.
     """
     # Load CSV Data
     master_list_packages = parse_package_csv(DEFAULT_PACKAGE_CSV_ADDRESS)
@@ -199,6 +255,7 @@ def simulate_truck_deliveries(end_time):
         curr_package.package_status = PackageStatus.DELAYED
         master_list_packages.add(pid, curr_package)
 
+    # If given end time is past 10:20, update package 9 address
     if end_time >= datetime(2020, 1, 1, 10, 20, 0):
         curr_package = master_list_packages.get(9)
         curr_package.address.street = "410 S State St"
@@ -206,14 +263,15 @@ def simulate_truck_deliveries(end_time):
         curr_package.address.zip_code = "84111"
         master_list_packages.add(9, curr_package)
 
-    # Adjust truck start times
-    truck_1 = Truck(datetime(2020, 1, 1, 8, 0, 0), "HUB")  # Early morning for time-sensitive
-    truck_2 = Truck(datetime(2020, 1, 1, 9, 5, 0), "HUB")  # Start after delayed packages arrive
-    truck_3 = Truck(datetime(2020, 1, 1, 10, 20, 0), "HUB")  # Start after first truck returns
+    # Truck start times
+    truck_1 = Truck(datetime(2020, 1, 1, 8, 0, 0), "HUB")
+    truck_2 = Truck(datetime(2020, 1, 1, 9, 5, 0), "HUB")
+    truck_3 = Truck(datetime(2020, 1, 1, 10, 20, 0), "HUB")
 
-    t1_ids = [13, 14, 15, 16, 19, 20, 21, 29, 30, 31, 39, 40] # Time sensitive packages 
-    t2_ids = [1, 4, 6, 25, 28, 32, 7, 8, 10, 11, 12, 17] # South/West routes
-    t3_ids = [2, 3, 5, 9, 18, 22, 23, 24, 26, 27, 33, 34, 35, 36, 37, 38] # North/East routes
+    # Package Id list
+    t1_ids = [13, 14, 15, 16, 19, 20, 21, 29, 30, 31, 39, 40]
+    t2_ids = [1, 4, 6, 25, 28, 32, 7, 8, 10, 11, 12, 17]
+    t3_ids = [2, 3, 5, 9, 18, 22, 23, 24, 26, 27, 33, 34, 35, 36, 37, 38]
 
     # Load packages
     for id in t1_ids:
@@ -224,26 +282,29 @@ def simulate_truck_deliveries(end_time):
     for id in t2_ids:
         package = master_list_packages.get(id)
 
+        # Reformat address here so it matches address in address_index
         if id in (25, 26):
             package.address.street = "5383 S 900 East #104"
 
         package.assigned_truck_number = 2
         truck_2.add_package(package)
 
+
     for id in t3_ids:
         package = master_list_packages.get(id)
 
+        # Reformat address here so it matches address in address_index
         if id in (25, 26):
             package.address.street = "5383 S 900 East #104"
 
         package.assigned_truck_number = 3
         truck_3.add_package(package)
 
+    # Start truck routing simulation
     for curr_truck in (truck_1, truck_2):
-        # start this truck's route time from its departure_time
         ROUTE_TIME = curr_truck.departure_time
 
-        # continue picking nearest package until no packages left or we've reached snapshot
+        # Continue picking nearest package until no packages left or we've reached end_time
         while ROUTE_TIME < end_time and len(curr_truck.get_packages()) > 0:
             # Find package with nearest address
             currLowest_pkg, _, currLowest = _find_nearest_delivery(
@@ -253,11 +314,11 @@ def simulate_truck_deliveries(end_time):
                 distances
             )
 
-            # nothing deliverable
+            # No packages
             if currLowest_pkg is None:
                 break
 
-            # compute travel time for this leg
+            # Compute travel time for this leg
             distance = currLowest
             travel_minutes = (distance / TRUCK_SPEED) * 60.0
             leg_duration = timedelta(minutes=travel_minutes)
@@ -265,15 +326,16 @@ def simulate_truck_deliveries(end_time):
 
             # If we can complete this delivery before or at snapshot -> deliver
             if arrival_time <= end_time:
-                # advance clock, update miles, set delivered
+                # Advance clock, Update miles, Set status to delivered
                 ROUTE_TIME = arrival_time
                 curr_truck.miles_traveled_today += distance
                 curr_truck.current_address = currLowest_pkg.address.street
 
-                # set package metadata
+                # Set package metadata
                 currLowest_pkg.package_status = PackageStatus.DELIVERED
                 currLowest_pkg.delivery_time = ROUTE_TIME
                 
+                # Remove package from truck
                 try:
                     curr_truck.remove_package(currLowest_pkg)
                 except Exception:
@@ -282,69 +344,75 @@ def simulate_truck_deliveries(end_time):
                     except Exception:
                         pass
 
-                # set truck's departure_time for next leg
+                # Set truck's departure_time for next leg
                 curr_truck.departure_time = ROUTE_TIME
-                # loop will select next nearest package
                 continue
 
-            # Partial leg: cannot finish before snapshot -> advance partially and mark en route
+            # Partial leg: cannot finish before end_time -> advance partially and mark en route
             available_seconds = (end_time - ROUTE_TIME).total_seconds()
             leg_seconds = leg_duration.total_seconds()
             if available_seconds <= 0:
                 break
+            # Find fraction and multiply to distance
             fraction = min(1.0, available_seconds / leg_seconds)
             partial_miles = distance * fraction
             curr_truck.miles_traveled_today += partial_miles
-            # advance truck clock to snapshot
+            # Advance clock to end_time
             ROUTE_TIME = end_time
-            # mark package as en route (still on truck)
+            # Change package status to en route
             currLowest_pkg.package_status = PackageStatus.EN_ROUTE
             if not hasattr(currLowest_pkg, "load_time"):
                 currLowest_pkg.load_time = curr_truck.departure_time
-            # update truck departure_time to snapshot so subsequent logic sees correct time
+            # Update truck departure_time to snapshot so subsequent logic sees correct time
             curr_truck.departure_time = ROUTE_TIME
-            # stop processing this truck (snapshot reached)
-            break
+            # Stop processing this truck (END TIME REACHED)
+            break 
 
+        # If truck is empty, calculate the distance from current address to hub and add mileage
         if len(curr_truck.get_packages()) == 0:
             ROUTE_TIME = _calculate_return_to_hub(curr_truck, address_index, distances, ROUTE_TIME, TRUCK_SPEED)
             curr_truck.departure_time = ROUTE_TIME
             curr_truck.current_address = "HUB"
 
-    # load-time rule: truck_3 is available after delayed arrival (9:05) and after truck_1 finishes
-    delayed_arrival = datetime(2020, 1, 1, 10, 20, 0)
-    # determine when truck_1 finished its route (use its departure_time after loop)
-    truck1_finish_time = getattr(truck_1, "departure_time", None) or datetime(2020, 1, 1, 8, 0, 0)
-    # set truck_3 departure if it wasn't set and snapshot allows
+    # Set truck_3 departure as 10:20, truck_1 will finish and return to HUB before this (~9:40 am)
     if len(truck_3.get_packages()) > 0:
-        planned_depart = max(delayed_arrival, truck1_finish_time)
+        planned_depart = datetime(2020, 1, 1, 10, 20, 0)
         if planned_depart <= end_time:
             truck_3.departure_time = planned_depart
             ROUTE_TIME = truck_3.departure_time
-            # simulate truck_3 same as above
+            
+            # Continue picking nearest package until no packages left or we've reached end_time
             while ROUTE_TIME < end_time and len(truck_3.get_packages()) > 0:
-                currLowest_pkg, currLowest_idx, currLowest = _find_nearest_delivery(
-                    truck_3.current_address,  # Fixed: was using curr_truck instead of truck_3
+                # Find package with nearest address
+                currLowest_pkg, _, currLowest = _find_nearest_delivery(
+                    truck_3.current_address,
                     truck_3.get_packages(), 
                     address_index,
                     distances
                 )
 
+                # No packages
                 if currLowest_pkg is None:
                     break
 
+                # Compute travel time for this leg
                 distance = currLowest
                 travel_minutes = (distance / TRUCK_SPEED) * 60.0
                 leg_duration = timedelta(minutes=travel_minutes)
                 arrival_time = ROUTE_TIME + leg_duration
 
+                # If we can complete this delivery before or at snapshot -> deliver
                 if arrival_time <= end_time:
+                    # Advance clock, Update miles, Set status to delivered
                     ROUTE_TIME = arrival_time
                     truck_3.miles_traveled_today += distance
                     truck_3.current_address = currLowest_pkg.address.street
 
+                    # Set package metadata
                     currLowest_pkg.package_status = PackageStatus.DELIVERED
                     currLowest_pkg.delivery_time = ROUTE_TIME
+                    
+                    # Remove package from truck
                     try:
                         truck_3.remove_package(currLowest_pkg)
                     except Exception:
@@ -352,48 +420,53 @@ def simulate_truck_deliveries(end_time):
                             truck_3.get_packages().remove(currLowest_pkg)
                         except Exception:
                             pass
+
+                    # Set truck's departure_time for next leg
                     truck_3.departure_time = ROUTE_TIME
                     continue
 
-                # partial leg for truck_3
+                # Partial leg: cannot finish before end_time -> advance partially and mark en route
                 available_seconds = (end_time - ROUTE_TIME).total_seconds()
                 leg_seconds = leg_duration.total_seconds()
                 if available_seconds <= 0:
                     break
+                # Find fraction and multiply to distance
                 fraction = min(1.0, available_seconds / leg_seconds)
                 partial_miles = distance * fraction
                 truck_3.miles_traveled_today += partial_miles
+                # Advance clock to end_time
                 ROUTE_TIME = end_time
+                # Change package status to en route
                 currLowest_pkg.package_status = PackageStatus.EN_ROUTE
                 if not hasattr(currLowest_pkg, "load_time"):
                     currLowest_pkg.load_time = truck_3.departure_time
+                # Update truck departure_time to snapshot so subsequent logic sees correct time
                 truck_3.departure_time = ROUTE_TIME
+                # Stop processing this truck (END TIME REACHED)
                 break
 
+            # If truck is empty, calculate the distance from current address to hub and add mileage
             if len(truck_3.get_packages()) == 0:
                 ROUTE_TIME = _calculate_return_to_hub(truck_3, address_index, distances, ROUTE_TIME, TRUCK_SPEED)
                 truck_3.departure_time = ROUTE_TIME 
                 truck_3.current_address = "HUB"
 
-    try:
-        num = 1
-        for truck in (truck_1, truck_2, truck_3):
-            _print_truck_information(truck, num)
-            num += 1
+    # Console Output - Trucks
+    # Use num for truck number
+    num = 1
+    for truck in (truck_1, truck_2, truck_3):
+        _print_truck_information(truck, num)
+        num += 1
 
-        print(f"Total Mileage: {truck_1.miles_traveled_today + truck_2.miles_traveled_today + truck_3.miles_traveled_today}")
-        print()
-        return {k: v for k, v in master_list_packages.items()}
-    except Exception:
-        out = {}
-        for i in range(1, 41):
-            try:
-                out[i] = master_list_packages.get(i)
-            except Exception:
-                out[i] = None
-        return out
+    print(f"Total Mileage: {truck_1.miles_traveled_today + truck_2.miles_traveled_today + truck_3.miles_traveled_today}")
+    print()
+    return {k: v for k, v in master_list_packages.items()}
 
 def _print_truck_information(truck, truck_num):
+    """
+    Prints a singular truck's key info
+    Runtime: O(1)
+    """
     print(f"Truck {truck_num} | Current Location: {truck.current_address} | Mileage: {truck.miles_traveled_today} miles | Number of Packages Left: {len(truck.packages)}")    
 
 def parse_package_csv(path):
@@ -444,18 +517,29 @@ def parse_distance_csv(path):
         reader = csv.reader(f)
 
         for row in reader:
-            # skip empty rows and headers
+            """
+            Process:
+              - Skip headers and empty rows.
+              - Extract address from column 2 and clean formatting.
+              - Parse distance values from the rest of the row.
+
+            Flow:
+              - If row is empty or a header, continue.
+              - Strip extra quotes and remove embedded ZIP codes from address.
+              - Convert numeric distance values to floats, leave missing cells as None.
+              - Append cleaned address and row distances to their respective lists.
+
+            Complexity: O(m), where m = number of rows in the distance CSV.
+            """
             if not row or not row[0].strip() or "DISTANCE" in row[0]:
                 continue
 
-            # --- Step 1: clean address from column 2 ---
             raw = row[1].strip().replace('"', "")
             if not raw:
                 continue
             clean = re.sub(r"\(\d{5}\)", "", raw).strip()
             addresses.append(clean)
 
-            # --- Step 2: distances for this row (starting at col 2 onward) ---
             row_distances = []
             for cell in row[2:]:
                 if not cell.strip():
@@ -464,10 +548,20 @@ def parse_distance_csv(path):
                     row_distances.append(float(cell))
             distances.append(row_distances)
 
-    # --- Step 3: build index map ---
+    """
+    Process:
+      - Build a dictionary that maps each address to its index in the list.
+      - Fill in missing (None) entries in the distance matrix by mirroring
+        the corresponding non-None value from the opposite cell.
+
+    Flow:
+      - Use enumerate() to assign each address an index.
+      - Iterate over i, j pairs and fill symmetric distances where needed.
+
+    Complexity: O(n²), where n = number of addresses.
+    """
     address_index = {addr: i for i, addr in enumerate(addresses)}
 
-    # --- Step 4: fill mirrored values ---
     n = len(addresses)
     for i in range(n):
         for j in range(n):
@@ -478,6 +572,9 @@ def parse_distance_csv(path):
     return addresses, address_index, distances
 
 def show_main_menu():
+    """
+    Process: Output text art and menu to console, grabs input
+    """
     banner = r"""
 __        ______ _   _ ____  ____    ____            _                    
 \ \      / / ___| | | |  _ \/ ___|  |  _ \ __ _  ___| | ____ _  __ _  ___ 
@@ -505,4 +602,14 @@ __        ______ _   _ ____  ____    ____            _
     return choice
 
 
-main_menu()
+def run():
+    """Entry point wrapper for running the WGUPS routing program."""
+    try:
+        main_menu()
+    except KeyboardInterrupt:
+        print("\n\nShutting down WGUPS Routing Console (Ctrl+C detected)...\n")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    run()

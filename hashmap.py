@@ -13,12 +13,13 @@ Flow:
 
 Complexity notes:
   - Average-case add/get/delete are O(1) when the load factor is kept low.
-  - Resizing is O(n) and happens occasionally; amortized cost of add remains O(1).
+  - Resizing is O(n) and happens occasionally; amortized cost of add remains A(1).
 """
 
 
 class CustomHashMap:
-    """Separate-chaining hash map with simple automatic growth.
+    """
+    Separate-chaining hash map with simple automatic growth.
 
     The implementation uses a list of buckets where each bucket is a Python
     list of [key, value] pairs. Collisions are resolved by appending to the
@@ -30,12 +31,13 @@ class CustomHashMap:
         # store number of buckets and initialize empty bucket lists
         self.size = max(1, int(size))
         self.map = [[] for _ in range(self.size)]
-        # count of stored key/value pairs (used to compute load factor)
+        # count of stored key/value pairs
         self.count = 0
         self.max_load = float(max_load)
 
     def _get_hash(self, key):
-        """Compute a simple polynomial rolling hash and return bucket index.
+        """
+        Compute a simple polynomial rolling hash and return bucket index.
 
         Process: build an integer hash from the string form of the key, then
         reduce it modulo `self.size` to obtain the bucket index.
@@ -48,7 +50,8 @@ class CustomHashMap:
         return h
 
     def _resize(self, new_size):
-        """Resize the bucket array to new_size and rehash all items.
+        """
+        Resize the bucket array to new_size and rehash all items.
 
         Process: snapshot existing items, allocate a new bucket list of the
         requested size, reset counters, and re-insert each item (which
@@ -65,11 +68,13 @@ class CustomHashMap:
             self.add(k, v)
 
     def add(self, key, value):
-        """Insert or update a key/value pair.
+        """
+        Insert or update a key/value pair.
 
         Process: compute bucket index, update if key exists, otherwise append
         a new pair and increment count. If load factor exceeds `max_load`,
         trigger a resize (doubling the bucket count).
+
         Flow: callers use add() to populate the map during CSV parsing.
         Complexity: average O(1), occasional O(n) during resize.
         """
@@ -89,7 +94,8 @@ class CustomHashMap:
         return True
 
     def get(self, key):
-        """Retrieve value by key or return None if missing.
+        """
+        Retrieve value by key or return None if missing.
 
         Process: hash to locate bucket and linear-scan the bucket for key.
         Complexity: average O(1), worst-case O(n) if many items collide.
@@ -101,7 +107,8 @@ class CustomHashMap:
         return None
 
     def delete(self, key):
-        """Remove key and return True if removed, False otherwise.
+        """
+        Remove key and return True if removed, False otherwise.
 
         Process: locate bucket and pop the matching pair. Decrement count so
         load factor remains accurate.
@@ -117,7 +124,8 @@ class CustomHashMap:
         return False
 
     def keys(self):
-        """Return a list of keys in bucket order.
+        """
+        Return a list of keys in bucket order.
 
         Note: bucket order depends on the current number of buckets and the
         hash function; it does not reflect numeric ordering of keys.
@@ -126,7 +134,8 @@ class CustomHashMap:
         return [pair[0] for bucket in self.map for pair in bucket]
 
     def items(self):
-        """Return a list of (key, value) pairs in bucket order.
+        """
+        Return a list of (key, value) pairs in bucket order.
 
         Complexity: O(n).
         """
