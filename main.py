@@ -45,7 +45,16 @@ def _print_package_info(package):
         delivery = dt.strftime("%H:%M:%S")
     else:
         delivery = str(dt)
-    print(f"ID: {package.id} | Address: {address} | Deadline: {package.deadline} | Assigned Truck: Truck {package.assigned_truck_number} | Status: {package.get_status_str()} | Delivery Time: {delivery}" )
+
+    print(
+        f"ID: {package.id:<2} "
+        f"| Address: {address:<70} "
+        f"| Weight: {package.weight:<2} Kg "
+        f"| Deadline: {package.deadline:<10} "
+        f"| Truck: {package.assigned_truck_number:<2} "
+        f"| Status: {package.get_status_str():<10} "
+        f"| Delivery Time: {delivery}"
+    )
 
 
 def main_menu():
@@ -69,6 +78,7 @@ def main_menu():
 
             # Choose what time to simulate delivery process to
             target_time = input("Enter a military time in the format HH:mm (or 'EOD' for end-of-day):\n").strip()
+            print()
             if target_time.upper() == "EOD":
                 snapshot_dt = datetime(2020, 1, 1, 23, 59, 0)
             else:
@@ -229,7 +239,6 @@ def simulate_truck_deliveries(end_time):
         package.assigned_truck_number = 3
         truck_3.add_package(package)
 
-    # Finish truck_3 route
     for curr_truck in (truck_1, truck_2):
         # start this truck's route time from its departure_time
         ROUTE_TIME = curr_truck.departure_time
