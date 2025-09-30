@@ -16,7 +16,8 @@ from Enums.package_status import PackageStatus
 from datetime import datetime
 
 class Package:
-    """Container for package data and light helpers.
+    """
+    Container for package data and light helpers.
 
     Process: store package fields and expose simple behavior used by the
     simulator

@@ -93,7 +93,7 @@ def main_menu():
                     input("Press Enter to return to the main menu...")
                     continue
 
-            # Run the simulation up to the requested snapshot and get master list
+            # Run the simulation up to the requested end_time and get master list
             # The Master List is a logbook of the statues of all package information
             master_package_list = simulate_truck_deliveries(snapshot_dt)
 
