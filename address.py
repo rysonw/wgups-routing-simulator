@@ -12,7 +12,6 @@ Complexity:
     - Construction is O(1).
 """
 
-
 class Address:
         """Simple address container.
 
@@ -25,4 +24,7 @@ class Address:
                 self.city = city
                 self.state = state
                 self.zip_code = zip_code
+
+        def print(self):
+            return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
 

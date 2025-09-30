@@ -36,6 +36,8 @@ class Package:
         self.address = address
         self.truck_number = truck_number
         self.package_status = PackageStatus.AT_HUB
+        self.delivery_time = None
+        self.assigned_truck_number = None
 
     def set_package_status(self, status):
         """Set the package status.
@@ -74,5 +76,21 @@ class Package:
             return True
         else:
             return False
+        
+    def get_status_str(self):
+        """Return a human-readable status string for the package."""
+        if self.package_status == PackageStatus.AT_HUB:
+            return "At Hub"
+        if self.package_status == PackageStatus.LOADED_IN_TRUCK:
+            return f"Loaded on Truck {self.truck_number}"
+        if self.package_status == PackageStatus.EN_ROUTE:
+            return "En Route"
+        if self.package_status == PackageStatus.DELIVERED:
+            return "Delivered"
+        # Fallback: return enum name if present, otherwise string representation
+        try:
+            return self.package_status.name
+        except Exception:
+            return str(self.package_status)
     
 
