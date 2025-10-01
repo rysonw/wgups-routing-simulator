@@ -269,9 +269,11 @@ def simulate_truck_deliveries(end_time):
     truck_3 = Truck(datetime(2020, 1, 1, 10, 20, 0), "HUB")
 
     # Package Id list
-    t1_ids = [13, 14, 15, 16, 19, 20, 21, 29, 30, 31, 39, 40]
-    t2_ids = [1, 4, 6, 25, 28, 32, 7, 8, 10, 11, 12, 17]
-    t3_ids = [2, 3, 5, 9, 18, 22, 23, 24, 26, 27, 33, 34, 35, 36, 37, 38]
+    t1_ids = [1, 13, 14, 15, 16, 20, 29, 30, 31, 34, 37, 40, 27, 33, 19]
+    # Truck 2: packages that must be on Truck 2 AND delayed-on-flight packages (arrive ~9:05)
+    t2_ids = [3, 18, 36, 38, 6, 25, 28, 32, 35, 39]
+    # Truck 3: explicit raw list (all remaining package IDs)
+    t3_ids = [2, 4, 5, 7, 8, 9, 10, 11, 12, 17, 21, 22, 23, 24, 26]
 
     # Load packages
     for id in t1_ids:
